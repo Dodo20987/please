@@ -1,24 +1,7 @@
 import React from 'react'
 import './App.css';
-
-function TopSection() {
-  return (
-    <div className='top'>
-      <h2 id = "top_header">TRAVEL COMPANION HUB</h2>
-      <div className='feature-select-btn'>
-        <button>Flights</button>
-        <button>Hotels</button>
-        <button>Weather</button>
-        <button>Points of interest</button>
-      </div>
-      <div className = "sign-up-support">
-        <button>Help</button>
-        <button>Login</button>
-        <button id = "sign-up">Sign Up</button>
-      </div>
-    </div>
-  );
-}
+import TopSection from './top_bar';
+import SearchBar from './SearchBar';
 
 function Filters() {
   return (
@@ -29,30 +12,6 @@ function Filters() {
   );
 }
 
-function SearchBar(props) {
-  const { city, handleChange, handleSubmit, handleCountryCode, countryCode, } = props;
-  return (
-    <form className = "hotel-search-form" onSubmit = {handleSubmit}>
-      <div className='new-search-container'>
-          <p id = "search-title">Search for hotels</p>
-        <div className = "search-input">
-          <input 
-          type = "text" 
-          placeholder='Destination'
-          value = {city}
-          onChange={handleChange}
-          />
-          <input type = "text" 
-          onChange={handleCountryCode}
-          placeholder = "enter country code e.g CA"
-            id = "country-code" 
-            value = {countryCode} />
-        </div>
-        <button className='hotel-btn' type = "submit">Search</button>
-      </div>
-    </form>
-  );
-}
 
 class Hotel_search extends React.Component {
   constructor(props) {
@@ -100,7 +59,7 @@ class Hotel_search extends React.Component {
     const Hotelurl = `${baseUrl}?keyword=${encodeURIComponent(this.state.city.toUpperCase())}&subType=HOTEL_LEISURE&countryCode=${encodeURIComponent(this.state.countryCode.toUpperCase())}&lang=EN&max=20`;
     
     //const apiKey = "xtU8VJK5vFf7wDosfi8Vs2PC2LahBwRZ";
-    const token = "2FcR7cGTuAjjK8VZLmgZ36wGo6Jk";
+    const token = "7Rzd9Y8TgxPdP4FHUjwzFHZuDc1s";
     const headers = {
       Accept: "application/vnd.amadeus+json",
       Authorization: `Bearer ${token}`
@@ -127,7 +86,7 @@ class Hotel_search extends React.Component {
     const baseUrl = "test.api.amadeus.com/v2 ";
     const ratingURL = `${baseUrl}/e-reputation/hotel-sentiments?hotelIds=${encodeURIComponent(hotelID)}`;
     //const apiKey = "xtU8VJK5vFf7wDosfi8Vs2PC2LahBwRZ";
-    const token = "2FcR7cGTuAjjK8VZLmgZ36wGo6Jk";
+    const token = "7Rzd9Y8TgxPdP4FHUjwzFHZuDc1s";
     const headers = {
       Accept: "application/vnd.amadeus+json",
       Authorization: `Bearer ${token}`
