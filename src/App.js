@@ -1,7 +1,32 @@
 import React from 'react'
 import './App.css';
 import TopSection from './top_bar';
-import SearchBar from './SearchBar';
+
+
+function SearchBar(props) {
+  const { city, handleChange, handleSubmit, handleCountryCode, countryCode, } = props;
+  return (
+    <form className = "hotel-search-form" onSubmit = {handleSubmit}>
+      <div className='new-search-container'>
+          <p id = "search-title">Search for hotels</p>
+        <div className = "search-input">
+          <input 
+          type = "text" 
+          placeholder='Destination'
+          value = {city}
+          onChange={handleChange}
+          />
+          <input type = "text" 
+          onChange={handleCountryCode}
+          placeholder = "enter country code e.g CA"
+            id = "country-code" 
+            value = {countryCode} />
+        </div>
+        <button className='hotel-btn' type = "submit">Search</button>
+      </div>
+    </form>
+  );
+}
 
 function Filters() {
   return (
@@ -21,13 +46,17 @@ class Hotel_search extends React.Component {
       city: "",
       submit: "",
       hotels: [],
-      countryCode: ""
+      countryCode: "",
+      cityCode : "",
+      hotelIds : [],
+      hotelPriceData: []
     };
     // so that we can use "this" keyword in given methods
     this.handleChange = this.handleChange.bind(this);
     this.searchHotel = this.searchHotel.bind(this); 
     this.handleSubmit = this.handleSubmit.bind(this);
     this.handleCountryCode = this.handleCountryCode.bind(this);
+    this.getRating = this.getRating.bind(this);
 
   }
   
@@ -58,8 +87,8 @@ class Hotel_search extends React.Component {
     const baseUrl = "https://test.api.amadeus.com/v1/reference-data/locations/hotel";
     const Hotelurl = `${baseUrl}?keyword=${encodeURIComponent(this.state.city.toUpperCase())}&subType=HOTEL_LEISURE&countryCode=${encodeURIComponent(this.state.countryCode.toUpperCase())}&lang=EN&max=20`;
     
-    //const apiKey = "xtU8VJK5vFf7wDosfi8Vs2PC2LahBwRZ";
-    const token = "7Rzd9Y8TgxPdP4FHUjwzFHZuDc1s";
+    //const apiKey = "cE2jGPVityfQ3dlJQV9Uwvb13NxR";
+    const token = "NAg96NsPv90yZ090r6Ov2K8GDk0S";
     const headers = {
       Accept: "application/vnd.amadeus+json",
       Authorization: `Bearer ${token}`
@@ -73,32 +102,70 @@ class Hotel_search extends React.Component {
       }
       const HotelContent = await HotelResponse.json();
       this.setState({
-        hotels: HotelContent.data
+        cityCode: HotelContent.data[0].iataCode
+      }, () => {
+        this.getRating();
       });
+      
     }
     catch(error) {
       console.error('Error fetching hotels:', error);
     }
 
   }
+  async getPrice() {
+    const token = "NAg96NsPv90yZ090r6Ov2K8GDk0S";
+    const baseUrl = "https://test.api.amadeus.com/v3";
+    const hotelIdList = this.state.hotelIds.join(',')
+    const URL = `${baseUrl}/shopping/hotel-offers?hotelIds=${encodeURIComponent(hotelIdList)}&checkInDate=2023-11-22&roomQuantity=1&paymentPolicy=NONE&bestRateOnly=false`;
+    const headers = {
+      Accept: "application/vnd.amadeus+json",
+      Authorization: `Bearer ${token}`
+    };
+    try {
+      const response = await fetch(URL, {headers,
+      method : "GET"});
+      const content = await response.json();
+      /* 
+         in order to print the price of the hotel onto the web page:
+         create a non state variable hashmap in the class hotel_search. 
+         the keys will be the name of the city, and use a loop to check if the hotelID from hotel list and
+         this api match. If the hotelIDS match then the value of the key will be hotelPriceData object.
+         To print to screen <> {element.name} - {map.element.name.price}
+      */
+      this.setState({
+        hotelPriceData : content.data
+      });
+
+    }
+    catch(error) {
+      console.error("error, couldn't fetch the prices")
+    }
+  }
+
   // sample data for ratings is limited, therefore can't use sample data for testing purposes
-  async getRating(hotelID) {
-    const baseUrl = "test.api.amadeus.com/v2 ";
-    const ratingURL = `${baseUrl}/e-reputation/hotel-sentiments?hotelIds=${encodeURIComponent(hotelID)}`;
-    //const apiKey = "xtU8VJK5vFf7wDosfi8Vs2PC2LahBwRZ";
-    const token = "7Rzd9Y8TgxPdP4FHUjwzFHZuDc1s";
+  async getRating() {
+    const baseUrl = "https://test.api.amadeus.com/v1";
+    //const ratingURL = `${baseUrl}/e-reputation/hotel-sentiments?hotelIds=${encodeURIComponent(hotelID)}`;
+    const ratingURL = `${baseUrl}/reference-data/locations/hotels/by-city?cityCode=${encodeURIComponent(this.state.cityCode.toLowerCase())}&radius=10&radiusUnit=KM&ratings=2,3,4,5&hotelSource=ALL`;
+    //const apiKey = "cE2jGPVityfQ3dlJQV9Uwvb13NxR";
+    const token = "NAg96NsPv90yZ090r6Ov2K8GDk0S";
     const headers = {
       Accept: "application/vnd.amadeus+json",
       Authorization: `Bearer ${token}`
     };
     try {
       const response = await fetch(ratingURL, {headers,
-      methods: "GET"});
+      method: "GET"});
       const ratingContent = await response.json();
-      return ratingContent.data.overallRating;
+      this.setState({
+        hotels: ratingContent.data
+      });
+      console.log("update2")
+      
     }
     catch(error) {
-      console.error("Error, couldn't fetch ratings", error);
+      console.error("Error fetching ratings:", error);
     }
     
 
@@ -112,6 +179,16 @@ class Hotel_search extends React.Component {
      copy and paste to get new access token for accessing api data
   */
   render() {
+    const uniqueHotelNames = new Set();
+
+    // Filter the array to get unique hotel names and map over them
+    const uniqueHotels = this.state.hotels.filter(hotel => {
+      if (!uniqueHotelNames.has(hotel.name)) {
+        uniqueHotelNames.add(hotel.name);
+        return true; // Include the hotel in the filtered array
+      }
+      return false; // Exclude duplicates
+    });
     return (
       <>
         <TopSection />
@@ -126,9 +203,12 @@ class Hotel_search extends React.Component {
           {/*arr.map(element => (
             <li key = {element}>Testing this in order to work</li>
           ))*/}
-          {this.state.hotels.map(element => (
+          {uniqueHotels.map(element => (
             <li key = {element}>
-              {element.address.cityName} - {element.name}
+              {this.state.submit.toUpperCase()} - {element.name}
+              <span className = "rating">
+                <p>ratings: {element.rating}/5 </p>
+              </span>
             </li>
           ))}
           </ul>

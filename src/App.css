@@ -117,10 +117,12 @@ button {
   white-space: nowrap;
 }
 
+/*hotel options*/
 .horizontal-list {
   list-style: none;
   padding: 0;
   margin: 0;
+  max-width: 90%;
   display: flex;
 }
 
@@ -131,7 +133,15 @@ button {
   border-width: 1px;
   margin-bottom: 50px;
   padding-bottom: auto;
+  margin-left: 10px;
+  padding-left: 10px;
+  padding-right: 10px;
 }
+.horizontal-list li:last-child {
+  margin-right: 10px; /* Remove the right margin for the last item */
+}
+
+
 
 
 
