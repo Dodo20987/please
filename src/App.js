@@ -2,6 +2,35 @@ import React from 'react'
 import './App.css';
 import TopSection from './top_bar';
 
+// to get access token
+var global_token;
+const getToken = async () => {
+    const apiUrl = 'https://test.api.amadeus.com/v1/security/oauth2/token';
+    const clientId = 'xtU8VJK5vFf7wDosfi8Vs2PC2LahBwRZ';
+    const clientSecret = 'Cc0DarAtHJsfKXZ0';
+  
+    try {
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `grant_type=client_credentials&client_id=${clientId}&client_secret=${clientSecret}`,
+      });
+  
+      if (response.ok) {
+        const data = await response.json();
+        const token = data.access_token;
+        //console.log('Token:', token);
+        return token;
+      } else {
+        console.error('Failed to retrieve token:', response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error('Error during token retrieval:', error);
+    }
+  };
+
 
 function SearchBar(props) {
   const { city, handleChange, handleSubmit, handleCountryCode, countryCode, } = props;
@@ -45,11 +74,12 @@ class Hotel_search extends React.Component {
     this.state = {
       city: "",
       submit: "",
-      hotels: [],
+      hotels: [], // get rate
       countryCode: "",
       cityCode : "",
-      hotelIds : [],
-      hotelPriceData: []
+      hotelPriceData: [],
+      hotelContent: [],
+      hotelPrice: [] // get price
     };
     // so that we can use "this" keyword in given methods
     this.handleChange = this.handleChange.bind(this);
@@ -79,30 +109,35 @@ class Hotel_search extends React.Component {
       submit: this.state.city
     });
     // trigger the hotel search after the city has been inputted
-    this.searchHotel();
+    getToken().then(token =>{
+      global_token = token;
+      this.searchHotel();
+    }).catch(error => {console.error("error couldn't get token", error)});
+    
   }
 
   // fetching data from amadeus api
   async searchHotel() {
     const baseUrl = "https://test.api.amadeus.com/v1/reference-data/locations/hotel";
-    const Hotelurl = `${baseUrl}?keyword=${encodeURIComponent(this.state.city.toUpperCase())}&subType=HOTEL_LEISURE&countryCode=${encodeURIComponent(this.state.countryCode.toUpperCase())}&lang=EN&max=20`;
+    const URL = `${baseUrl}?keyword=${encodeURIComponent(this.state.city.toUpperCase())}&subType=HOTEL_LEISURE&countryCode=${encodeURIComponent(this.state.countryCode.toUpperCase())}&lang=EN&max=20`;
     
     //const apiKey = "cE2jGPVityfQ3dlJQV9Uwvb13NxR";
-    const token = "NAg96NsPv90yZ090r6Ov2K8GDk0S";
+    //const token = "yFMG91Fp7GdxPkT4pcj7Di1KfZI3";
     const headers = {
       Accept: "application/vnd.amadeus+json",
-      Authorization: `Bearer ${token}`
+      Authorization: `Bearer ${global_token}`
     };
     
     try {
-      const HotelResponse = await fetch(Hotelurl, {headers,
+      const response = await fetch(URL, {headers,
       method: "GET"});
-      if (!HotelResponse.ok) {
+      if (!response.ok) {
         throw new Error('Failed to fetch hotels');
       }
-      const HotelContent = await HotelResponse.json();
+      const content = await response.json();
       this.setState({
-        cityCode: HotelContent.data[0].iataCode
+        cityCode: content.data[0].iataCode,
+        hotelContent : content.data
       }, () => {
         this.getRating();
       });
@@ -113,30 +148,35 @@ class Hotel_search extends React.Component {
     }
 
   }
+
   async getPrice() {
-    const token = "NAg96NsPv90yZ090r6Ov2K8GDk0S";
+    //const token = "yFMG91Fp7GdxPkT4pcj7Di1KfZI3";
+    let len = 0;
+    if(this.state.hotels.length > 175) {
+      len = 175;
+    }
+    else if(this.state.hotels.length <= 175) {
+      len = this.state.hotels.length;
+    }
+    let IDs = [];
+      for(let i = 0; i < len; i++) {
+            IDs.push(this.state.hotels[i].hotelId);
+    }
+
     const baseUrl = "https://test.api.amadeus.com/v3";
-    const hotelIdList = this.state.hotelIds.join(',')
-    const URL = `${baseUrl}/shopping/hotel-offers?hotelIds=${encodeURIComponent(hotelIdList)}&checkInDate=2023-11-22&roomQuantity=1&paymentPolicy=NONE&bestRateOnly=false`;
+    const IdList = IDs.join(',');
+    const URL = `${baseUrl}/shopping/hotel-offers?hotelIds=${encodeURIComponent(IdList)}&checkInDate=2023-11-22&roomQuantity=1&paymentPolicy=NONE&bestRateOnly=false`;    //const URL = `${baseUrl}/shopping/hotel-offers?hotelIds=${encodeURIComponent(hotelIdList)}&checkInDate=2023-11-22&roomQuantity=1&paymentPolicy=NONE&bestRateOnly=false`;
     const headers = {
       Accept: "application/vnd.amadeus+json",
-      Authorization: `Bearer ${token}`
+      Authorization: `Bearer ${global_token}`
     };
     try {
       const response = await fetch(URL, {headers,
       method : "GET"});
       const content = await response.json();
-      /* 
-         in order to print the price of the hotel onto the web page:
-         create a non state variable hashmap in the class hotel_search. 
-         the keys will be the name of the city, and use a loop to check if the hotelID from hotel list and
-         this api match. If the hotelIDS match then the value of the key will be hotelPriceData object.
-         To print to screen <> {element.name} - {map.element.name.price}
-      */
       this.setState({
-        hotelPriceData : content.data
+        hotelPrice : content.data
       });
-
     }
     catch(error) {
       console.error("error, couldn't fetch the prices")
@@ -149,10 +189,10 @@ class Hotel_search extends React.Component {
     //const ratingURL = `${baseUrl}/e-reputation/hotel-sentiments?hotelIds=${encodeURIComponent(hotelID)}`;
     const ratingURL = `${baseUrl}/reference-data/locations/hotels/by-city?cityCode=${encodeURIComponent(this.state.cityCode.toLowerCase())}&radius=10&radiusUnit=KM&ratings=2,3,4,5&hotelSource=ALL`;
     //const apiKey = "cE2jGPVityfQ3dlJQV9Uwvb13NxR";
-    const token = "NAg96NsPv90yZ090r6Ov2K8GDk0S";
+    //const token = "yFMG91Fp7GdxPkT4pcj7Di1KfZI3";
     const headers = {
       Accept: "application/vnd.amadeus+json",
-      Authorization: `Bearer ${token}`
+      Authorization: `Bearer ${global_token}`
     };
     try {
       const response = await fetch(ratingURL, {headers,
@@ -160,8 +200,10 @@ class Hotel_search extends React.Component {
       const ratingContent = await response.json();
       this.setState({
         hotels: ratingContent.data
+      }, () =>{
+        this.getPrice()
       });
-      console.log("update2")
+      
       
     }
     catch(error) {
@@ -178,17 +220,18 @@ class Hotel_search extends React.Component {
 
      copy and paste to get new access token for accessing api data
   */
-  render() {
-    const uniqueHotelNames = new Set();
-
-    // Filter the array to get unique hotel names and map over them
-    const uniqueHotels = this.state.hotels.filter(hotel => {
-      if (!uniqueHotelNames.has(hotel.name)) {
-        uniqueHotelNames.add(hotel.name);
-        return true; // Include the hotel in the filtered array
-      }
-      return false; // Exclude duplicates
-    });
+  render() {   
+    let res = [];
+    var index = 0;
+        for(let i = 0; i < this.state.hotelPrice.length; i++) {
+            for(let k = 0; k < this.state.hotels.length; k++) {
+                if(this.state.hotelPrice[i].hotel.hotelId === this.state.hotels[k].hotelId) {
+                    res.push(this.state.hotelPrice[i]);
+                    res[index].rating = this.state.hotels[k].rating;
+                    index++;
+                } 
+            }
+        }
     return (
       <>
         <TopSection />
@@ -203,11 +246,12 @@ class Hotel_search extends React.Component {
           {/*arr.map(element => (
             <li key = {element}>Testing this in order to work</li>
           ))*/}
-          {uniqueHotels.map(element => (
+          {res.map(element => (
             <li key = {element}>
-              {this.state.submit.toUpperCase()} - {element.name}
+              {element.hotel.cityCode} - {element.hotel.name}
               <span className = "rating">
                 <p>ratings: {element.rating}/5 </p>
+                <p>price: ${element.offers[0].price.total} {element.offers[0].price.currency}</p>
               </span>
             </li>
           ))}
