@@ -8,6 +8,8 @@ const getToken = async () => {
     const apiUrl = 'https://test.api.amadeus.com/v1/security/oauth2/token';
     const clientId = 'xtU8VJK5vFf7wDosfi8Vs2PC2LahBwRZ';
     const clientSecret = 'Cc0DarAtHJsfKXZ0';
+    const apikey = "DJHiMrui9ZRlRv5dfuQAzg1dnOHOpGzj";
+    const apisecret = "gxGKuMeB6yUpCq6x";
   
     try {
       const response = await fetch(apiUrl, {
@@ -79,7 +81,9 @@ class Hotel_search extends React.Component {
       cityCode : "",
       hotelPriceData: [],
       hotelContent: [],
-      hotelPrice: [] // get price
+      hotelPrice: [], // get price
+      longitude : "",
+      latitude : ""
     };
     // so that we can use "this" keyword in given methods
     this.handleChange = this.handleChange.bind(this);
@@ -118,9 +122,9 @@ class Hotel_search extends React.Component {
 
   // fetching data from amadeus api
   async searchHotel() {
-    const baseUrl = "https://test.api.amadeus.com/v1/reference-data/locations/hotel";
-    const URL = `${baseUrl}?keyword=${encodeURIComponent(this.state.city.toUpperCase())}&subType=HOTEL_LEISURE&countryCode=${encodeURIComponent(this.state.countryCode.toUpperCase())}&lang=EN&max=20`;
-    
+    const baseURL = "https://test.api.amadeus.com/v1/reference-data/locations";
+    //const URL = `${baseURL}?keyword=${encodeURIComponent(this.state.city.toUpperCase())}&subType=HOTEL_LEISURE&countryCode=${encodeURIComponent(this.state.countryCode.toUpperCase())}&lang=EN&max=20`;
+    const url = `${baseURL}/cities?countryCode=${encodeURIComponent(this.state.countryCode.toUpperCase())}&keyword=${encodeURIComponent(this.state.city.toUpperCase())}&max=10&include=AIRPORTS`;
     //const apiKey = "cE2jGPVityfQ3dlJQV9Uwvb13NxR";
     //const token = "yFMG91Fp7GdxPkT4pcj7Di1KfZI3";
     const headers = {
@@ -129,7 +133,7 @@ class Hotel_search extends React.Component {
     };
     
     try {
-      const response = await fetch(URL, {headers,
+      const response = await fetch(url, {headers,
       method: "GET"});
       if (!response.ok) {
         throw new Error('Failed to fetch hotels');
@@ -137,7 +141,9 @@ class Hotel_search extends React.Component {
       const content = await response.json();
       this.setState({
         cityCode: content.data[0].iataCode,
-        hotelContent : content.data
+        hotelContent : content.data,
+        longitude : content.data[0].geoCode.longitude,
+        latitude: content.data[0].geoCode.latitude
       }, () => {
         this.getRating();
       });
@@ -149,8 +155,35 @@ class Hotel_search extends React.Component {
 
   }
 
+  // sample data for ratings is limited, therefore can't use sample data for testing purposes
+  async getRating() {
+    const baseUrl = "https://test.api.amadeus.com/v1";
+    const url = `${baseUrl}/reference-data/locations/hotels/by-geocode?latitude=${encodeURIComponent(this.state.latitude)}&longitude=${encodeURIComponent(this.state.longitude)}&radius=20&radiusUnit=KM&ratings=2,3,4,5&hotelSource=ALL`;
+    //const ratingURL = `${baseUrl}/reference-data/locations/hotels/by-city?cityCode=${encodeURIComponent(this.state.cityCode.toLowerCase())}&radius=10&radiusUnit=KM&ratings=2,3,4,5&hotelSource=ALL`;
+    const headers = {
+      Accept: "application/vnd.amadeus+json",
+      Authorization: `Bearer ${global_token}`
+    };
+    try {
+      const response = await fetch(url, {headers,
+      method: "GET"});
+      const ratingContent = await response.json();
+      this.setState({
+        hotels: ratingContent.data
+      }, () =>{
+        this.getPrice()
+      });
+      
+      
+    }
+    catch(error) {
+      console.error("Error fetching ratings:", error);
+    }
+    
+
+  }
+
   async getPrice() {
-    //const token = "yFMG91Fp7GdxPkT4pcj7Di1KfZI3";
     let len = 0;
     if(this.state.hotels.length > 175) {
       len = 175;
@@ -183,44 +216,11 @@ class Hotel_search extends React.Component {
     }
   }
 
-  // sample data for ratings is limited, therefore can't use sample data for testing purposes
-  async getRating() {
-    const baseUrl = "https://test.api.amadeus.com/v1";
-    //const ratingURL = `${baseUrl}/e-reputation/hotel-sentiments?hotelIds=${encodeURIComponent(hotelID)}`;
-    const ratingURL = `${baseUrl}/reference-data/locations/hotels/by-city?cityCode=${encodeURIComponent(this.state.cityCode.toLowerCase())}&radius=10&radiusUnit=KM&ratings=2,3,4,5&hotelSource=ALL`;
-    //const apiKey = "cE2jGPVityfQ3dlJQV9Uwvb13NxR";
-    //const token = "yFMG91Fp7GdxPkT4pcj7Di1KfZI3";
-    const headers = {
-      Accept: "application/vnd.amadeus+json",
-      Authorization: `Bearer ${global_token}`
-    };
-    try {
-      const response = await fetch(ratingURL, {headers,
-      method: "GET"});
-      const ratingContent = await response.json();
-      this.setState({
-        hotels: ratingContent.data
-      }, () =>{
-        this.getPrice()
-      });
-      
-      
-    }
-    catch(error) {
-      console.error("Error fetching ratings:", error);
-    }
-    
-
-  }
-  /*
-      curl "https://test.api.amadeus.com/v1/security/oauth2/token" \
-     -H "Content-Type: application/x-www-form-urlencoded" \
-     -d "grant_type=client_credentials&client_id=xtU8VJK5vFf7wDosfi8Vs2PC2LahBwRZ&client_secret=Cc0DarAtHJsfKXZ0"
 
 
-     copy and paste to get new access token for accessing api data
-  */
   render() {   
+    // in order to combine the data from hotel list and hotel search
+    // allows us to print out name, rating, price onto screen.
     let res = [];
     var index = 0;
         for(let i = 0; i < this.state.hotelPrice.length; i++) {
@@ -232,6 +232,13 @@ class Hotel_search extends React.Component {
                 } 
             }
         }
+      /*var img_links = [];
+      for(let i = 0; i < 10; i++) {
+        img_links.push("assets/" + (i + 1) + ".jpg");
+      }
+      //var img_index = 0;
+      //img_index = (img_index + 1) % img_links.length;*/
+      //console.log("update7");
     return (
       <>
         <TopSection />
