@@ -1,13 +1,24 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
-import App from './App';
+import Hotel from './Hotel';
 import reportWebVitals from './reportWebVitals';
+import Flights from './flights';
+import {
+  createBrowserRouter,
+  RouterProvider,
+} from "react-router-dom"
+const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <Hotel />,
+  },
+]);
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
-    <App />
+    <Flights />
   </React.StrictMode>
 );
 

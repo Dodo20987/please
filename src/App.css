@@ -134,12 +134,21 @@ button {
   margin-bottom: 50px;
   padding-bottom: auto;
   margin-left: 10px;
-  padding-left: 10px;
-  padding-right: 10px;
+  padding-left: 0px;
+  padding-right: 0px;
+}
+.horizontal-list p {
+  margin-left: 10px;
+}
+.hotel-image {
+  height: auto;
+  width: 500px;
 }
 .horizontal-list li:last-child {
   margin-right: 10px; /* Remove the right margin for the last item */
 }
+
+
 
 
 
